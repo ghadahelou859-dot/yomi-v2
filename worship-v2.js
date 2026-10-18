@@ -23,6 +23,24 @@ const adhkar=[
 {id:'gen3',cat:'العامة',text:'لا إله إلا الله',target:100}
 ];
 const all=()=>adhkar.filter(x=>x.cat!=='العامة').concat(w.custom.map(x=>({...x,cat:x.cat||'الخاصة'})));
+const defaultIntentions=['الصلاة على النبي ﷺ','أستغفر الله وأتوب إليه','لا حول ولا قوة إلا بالله','سبحان الله وبحمده','لا إله إلا الله وحده لا شريك له','الحمد لله','سبحان الله العظيم','لا إله إلا أنت سبحانك إني كنت من الظالمين'];
+w.intentionList=Array.isArray(w.intentionList)?w.intentionList:defaultIntentions.map((text,i)=>({id:'intent-'+i,text,target:100}));
+w.intentionCycle=Array.isArray(w.intentionCycle)?w.intentionCycle:[];
+w.intentionDays=w.intentionDays&&typeof w.intentionDays==='object'?w.intentionDays:{};
+const intentionToday=()=>{
+ const day=date(),list=w.intentionList.filter(x=>x&&x.id&&x.text);
+ if(!list.length)return null;
+ if(w.intentionDays[day]){const existing=list.find(x=>x.id===w.intentionDays[day]);if(existing)return existing}
+ let remaining=list.filter(x=>!w.intentionCycle.includes(x.id));
+ if(!remaining.length){w.intentionCycle=[];remaining=list}
+ const selected=remaining[Math.floor(Math.random()*remaining.length)];
+ w.intentionCycle.push(selected.id);w.intentionDays[day]=selected.id;persist();return selected;
+};
+const intentionModal=()=>{
+ const a=intentionToday();if(!a)return;
+ const n=today().counts.intention||0;
+ showModal('✨ ذكر النية','<div class="wv-reading">'+esc(a.text)+'</div><p>أنجزتِ '+n+' من '+a.target+'</p><div class="wv-big"><button data-wtap="intention"><span id="wv-big-number">'+n+'</span><small>اضغطي للعد +1</small></button></div><div class="row">'+button('− تراجع','data-wtapminus="intention"')+button('✓ أتممت الذكر','data-wcomplete="intention"')+'</div><form id="w-intention-add"><label>عدد أنجزته بالفعل<input class="field" type="number" name="amount" min="1" step="1" required placeholder="مثلاً 50"></label><button class="btn">إضافة للإنجاز</button></form><p class="notice">العدد يضاف إلى إنجازك السابق، ولا يستبدله.</p>');
+};
 const idFor=(a)=>a.id, count=(a)=>today().counts[a.id]||0, done=(a)=>count(a)>=a.target||!!today().done[a.id];
 const card=(s)=>'<section class="card">'+s+'</section>';
 const button=(label,attr,cl='secondary')=>'<button class="btn '+cl+'" '+attr+'>'+label+'</button>';
@@ -61,8 +79,8 @@ const unfinished=a.filter(x=>!done(x)),finished=a.filter(done);
 const row=a=>'<div class="wv-dhikr '+(done(a)?'wv-done':'')+'"><div class="row"><b>'+esc(a.text)+'</b><span class="pill">'+count(a)+' / '+a.target+'</span></div>'+button(done(a)?'✓ مكتمل — فتح':'فتح الذكر','data-wopen="'+esc(a.id)+'"')+(a.cat==='الخاصة'?button('تعديل','data-weditdhikr="'+esc(a.id)+'"')+button('حذف','data-wdeletedhikr="'+esc(a.id)+'"'):'')+'</div>';
 let basics=all().filter(x=>x.cat==='الخاصة'&&x.kind!=='act');
 const allDone=basics.length>0&&basics.every(done);
-let intent=all().find(x=>x.text===w.settings.intention)||{id:'intention',text:w.settings.intention,target:w.settings.intentionTarget};
-return '<div class="tabline">'+['الخاصة','الصباح','المساء','النوم'].map(x=>'<button data-wcat="'+x+'" class="'+(category===x?'active':'')+'">'+x+'</button>').join('')+'</div>'+card('<h2>الأذكار المتبقية</h2>'+(unfinished.map(row).join('')||'<p class="good">أكملتِ أذكار هذا القسم 🌷</p>'))+card('<h2>الأذكار المكتملة ✓</h2>'+(finished.map(row).join('')||'<p class="muted">ستظهر هنا بعد إكمالها.</p>'))+(allDone?card('<h2>✨ ذكر النية</h2><p>'+esc(intent.text)+'</p>'+countRow('intention',today().counts.intention||0,'من '+w.settings.intentionTarget)+'<label>الذكر المختار<input class="field" id="w-intention" value="'+esc(w.settings.intention)+'"></label><label>الهدف<input class="field" type="number" min="1" id="w-intention-target" value="'+w.settings.intentionTarget+'"></label><p class="notice">ذكر النية مستقل في الحساب حتى لا تتكرر مرات الذكر.</p>'):'')+card('<h2>إضافة ذكر خاص</h2><form id="w-add-dhikr"><input class="field" name="text" required placeholder="نص الذكر"><input class="field" name="target" type="number" min="1" value="33" aria-label="عدد التكرارات"><button class="btn">إضافة</button></form>');
+const intent=intentionToday();
+return '<div class="tabline">'+['الخاصة','الصباح','المساء','النوم'].map(x=>'<button data-wcat="'+x+'" class="'+(category===x?'active':'')+'">'+x+'</button>').join('')+'</div>'+card('<h2>الأذكار المتبقية</h2>'+(unfinished.map(row).join('')||'<p class="good">أكملتِ أذكار هذا القسم 🌷</p>'))+card('<h2>الأذكار المكتملة ✓</h2>'+(finished.map(row).join('')||'<p class="muted">ستظهر هنا بعد إكمالها.</p>'))+(allDone&&intent?card('<h2>✨ ذكر النية اليوم</h2><p>'+esc(intent.text)+'</p><p>أنجزتِ '+(today().counts.intention||0)+' / '+intent.target+'</p>'+button('فتح ذكر النية','data-wintention="1"')+'<p class="notice">يتغير الذكر عند منتصف الليل، ولا يتكرر حتى تنتهي القائمة.</p>'):'')+card('<h2>قائمة ذكر النية</h2><p class="muted">الأذكار التي أختار منها تلقائيًا، دون تكرار خلال الدورة.</p>'+w.intentionList.map(x=>'<div class="wv-line"><span>'+esc(x.text)+' — '+x.target+' مرة</span> '+button('تعديل','data-wiedit="'+esc(x.id)+'"')+' '+button('حذف','data-widelete="'+esc(x.id)+'"')+'</div>').join('')+'<form id="w-add-intention"><input class="field" name="text" required placeholder="ذكر جديد لقائمة النية"><input class="field" type="number" name="target" min="1" value="100" required><button class="btn">إضافة للقائمة</button></form>')+card('<h2>إضافة ذكر خاص</h2><form id="w-add-dhikr"><input class="field" name="text" required placeholder="نص الذكر"><input class="field" name="target" type="number" min="1" value="33" aria-label="عدد التكرارات"><button class="btn">إضافة</button></form>');
 }
 function quran(){
 const d=today();
@@ -87,9 +105,12 @@ return '<h2 class="section-title">عباداتي ☾</h2><p class="muted">مسا
 };
 const refresh=()=>{let top=window.scrollY;render();window.scrollTo(0,top)};
 document.addEventListener('click',e=>{
-const b=e.target.closest('[data-wview],[data-wcat],[data-wpsheet],[data-wopen],[data-wcount],[data-wtap],[data-wtapminus],[data-wcomplete],[data-wsurahdone],[data-wread],[data-wremoveprayer],[data-weditdhikr],[data-wdeletedhikr],[data-wcancel]');
+const b=e.target.closest('[data-wintention],[data-wiedit],[data-widelete],[data-wview],[data-wcat],[data-wpsheet],[data-wopen],[data-wcount],[data-wtap],[data-wtapminus],[data-wcomplete],[data-wsurahdone],[data-wread],[data-wremoveprayer],[data-weditdhikr],[data-wdeletedhikr],[data-wcancel]');
 if(!b)return;
 e.preventDefault();e.stopImmediatePropagation();
+if(b.dataset.wintention){intentionModal();return}
+if(b.dataset.wiedit){const a=w.intentionList.find(x=>x.id===b.dataset.wiedit);if(!a)return;showModal('تعديل ذكر النية','<form id="w-edit-intention"><input type="hidden" name="id" value="'+esc(a.id)+'"><label>الذكر<input class="field" name="text" required value="'+esc(a.text)+'"></label><label>العدد المطلوب<input class="field" type="number" name="target" min="1" required value="'+a.target+'"></label><button class="btn">حفظ التعديل</button></form>');return}
+if(b.dataset.widelete){if(confirm('حذف الذكر من قائمة النية؟')){w.intentionList=w.intentionList.filter(x=>x.id!==b.dataset.widelete);persist();refresh()}return}
 if(b.dataset.wdeletedhikr){const id=b.dataset.wdeletedhikr;if(confirm('حذف هذا الذكر الخاص؟')){w.custom=w.custom.filter(x=>x.id!==id);persist();refresh()}return}
 if(b.dataset.weditdhikr){const a=w.custom.find(x=>x.id===b.dataset.weditdhikr);if(!a)return;showModal('تعديل الذكر','<form id="w-edit-dhikr"><input type="hidden" name="id" value="'+esc(a.id)+'"><label>نص الذكر<input class="field" name="text" required value="'+esc(a.text)+'"></label><label>العدد المستهدف<input class="field" name="target" type="number" min="1" required value="'+a.target+'"></label><div class="row"><button class="btn">حفظ</button><button class="btn secondary" type="button" data-wcancel="1">إلغاء</button></div></form>');return}
 if(b.dataset.wcancel){closeModal();return}
@@ -109,9 +130,9 @@ else if(id.startsWith('sunnah:')){let n=id.slice(7);d.sunnah=d.sunnah||{};d.sunn
 else if(id.startsWith('nafl:')){let n=id.slice(5);d.nafl[n]=Math.max(0,(d.nafl[n]||0)+delta)}
 else if(id.startsWith('pw:')||id.startsWith('tariq:'))d.prayerWird[id]=Math.max(0,(d.prayerWird[id]||0)+delta);
 else d.counts[id]=Math.max(0,(d.counts[id]||0)+delta);
-if(b.dataset.wcomplete){const a=all().find(x=>x.id===id);if(a)d.counts[id]=Math.max(d.counts[id]||0,a.target)}
+if(b.dataset.wcomplete){const a=id==='intention'?intentionToday():all().find(x=>x.id===id);if(a)d.counts[id]=Math.max(d.counts[id]||0,a.target)}
 persist();
-if(b.dataset.wtap||b.dataset.wtapminus||b.dataset.wcomplete){const num=document.getElementById('wv-big-number');if(num)num.textContent=d.counts[id]||0;return}
+if(b.dataset.wtap||b.dataset.wtapminus||b.dataset.wcomplete){if(id==='intention'){intentionModal();return}const num=document.getElementById('wv-big-number');if(num)num.textContent=d.counts[id]||0;return}
 if(selectedPrayer&&!document.getElementById('modal').classList.contains('hidden')&&document.getElementById('modalTitle').textContent.includes('صلاة ')){showPrayer();return}
 refresh();
 },true);
@@ -131,9 +152,13 @@ else return;
 persist();refresh();
 },true);
 document.addEventListener('submit',e=>{
-let f=e.target.closest('#w-add-dhikr,#w-add-act,#w-add-dua,#w-add-prayer,#w-prayer-act,#w-edit-dhikr,#w-manual-count');if(!f)return;
+let f=e.target.closest('#w-add-dhikr,#w-add-act,#w-add-dua,#w-add-prayer,#w-prayer-act,#w-edit-dhikr,#w-manual-count,#w-intention-add,#w-add-intention,#w-edit-intention');if(!f)return;
 e.preventDefault();e.stopImmediatePropagation();
-let data=new FormData(f);if(f.id==='w-manual-count'){let id=String(data.get('id')),n=Number(data.get('amount'));if(!Number.isSafeInteger(n)||n<1)return;today().counts[id]=(today().counts[id]||0)+n;persist();dhikrSheet(id);return}if(f.id==='w-edit-dhikr'){let a=w.custom.find(x=>x.id===data.get('id')),v=String(data.get('text')||'').trim(),n=Number(data.get('target'));if(!a||!v||!Number.isSafeInteger(n)||n<1)return;a.text=v;a.target=n;persist();closeModal();refresh();return}let v=String(data.get('text')||'').trim();if(!v)return;
+let data=new FormData(f);
+if(f.id==='w-intention-add'){let n=Number(data.get('amount'));if(!Number.isSafeInteger(n)||n<1)return;today().counts.intention=(today().counts.intention||0)+n;persist();intentionModal();return}
+if(f.id==='w-add-intention'){let v=String(data.get('text')||'').trim(),n=Number(data.get('target'));if(!v||!Number.isSafeInteger(n)||n<1)return;w.intentionList.push({id:'intent-'+Date.now(),text:v,target:n});persist();refresh();return}
+if(f.id==='w-edit-intention'){let a=w.intentionList.find(x=>x.id===data.get('id')),v=String(data.get('text')||'').trim(),n=Number(data.get('target'));if(!a||!v||!Number.isSafeInteger(n)||n<1)return;a.text=v;a.target=n;persist();closeModal();refresh();return}
+if(f.id==='w-manual-count'){let id=String(data.get('id')),n=Number(data.get('amount'));if(!Number.isSafeInteger(n)||n<1)return;today().counts[id]=(today().counts[id]||0)+n;persist();dhikrSheet(id);return}if(f.id==='w-edit-dhikr'){let a=w.custom.find(x=>x.id===data.get('id')),v=String(data.get('text')||'').trim(),n=Number(data.get('target'));if(!a||!v||!Number.isSafeInteger(n)||n<1)return;a.text=v;a.target=n;persist();closeModal();refresh();return}let v=String(data.get('text')||'').trim();if(!v)return;
 if(f.id==='w-add-prayer'){if(!prayers.includes(v)&&!w.extraPrayers.includes(v))w.extraPrayers.push(v);persist();refresh();return}
 if(f.id==='w-prayer-act'){w.prayerActs.push({id:'pa-'+Date.now(),text:v,prayers:[selectedPrayer]});persist();showPrayer();return}
 if(f.id==='w-add-dua')w.duas.push(v);
