@@ -23,4 +23,4 @@ document.addEventListener('input',e=>{if(e.target.id==='veil'){state.veil=Number
 document.addEventListener('submit',e=>{let f=e.target.closest('[data-add]');if(!f)return;e.preventDefault();let type=f.dataset.add,v=f.elements.value.value.trim();if(!v)return;if(type==='tasks')state.tasks.push({text:v,done:false});else state[type].push(v);render();save()});
 document.addEventListener('click',e=>{if(e.target.id==='clearBg'){let scope=$('bgScope').value;delete state.backgrounds[scope==='all'?'all':page];render();save();closeModal()}});
 $('appearance').onclick=appearance;$('moment').onclick=()=>showModal('✨ لحظتي','<p>اختاري المساحة اللي بتحتاجيها اليوم:</p><div class="grid">'+['بدي أنجز','بدي أروق','بدي أفضفض','بدي أتعلم','بدي أرتب أفكاري'].map(x=>'<button class="btn secondary" onclick="document.getElementById(\'modalBody\').innerHTML=\'<p>هذه المساحة قيد التطوير: '+x+'</p>\'">'+x+'</button>').join('')+'</div>');render();
-</script><script src="./worship-v2.js?v=20261019a"></script></body></html>
+</script><script src="./worship-v2.js?v=20261019b"></script></body></html>
