@@ -3,7 +3,7 @@
 const WKEY='yomi-v2-worship-2026-10';let w;
 try{w=JSON.parse(localStorage.getItem(WKEY)||'{}')}catch{w={}}
 w={days:{},custom:[],duas:[],surah:'مريم',surahPage:0,surahDone:{},surahTotal:0,goal:5,settings:{intention:'الصلاة على النبي ﷺ',intentionTarget:100,light:false},...w};
-let selectedPrayer='',selectedDhikr='',category='الصباح',wview='صلواتي',openSection='ورد بعد الصلاة';
+w.nextPage=Number.isInteger(w.nextPage)&&w.nextPage>=1&&w.nextPage<=604?w.nextPage:24;w.extraPrayers=Array.isArray(w.extraPrayers)?w.extraPrayers:[];w.prayerActs=Array.isArray(w.prayerActs)?w.prayerActs:[];let selectedPrayer='',selectedDhikr='',category='الصباح',wview='صلواتي',openSection='ورد بعد الصلاة';
 const date=()=>new Date().toLocaleDateString('en-CA'),today=()=>w.days[date()]||(w.days[date()]={prayers:{},nafl:{},counts:{},done:{},quran:0,prayerWird:{},acts:{}}),persist=()=>{try{localStorage.setItem(WKEY,JSON.stringify(w))}catch(e){alert('تعذر حفظ عباداتي، تحققي من مساحة التخزين.')}};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const prayers=['الفجر','الظهر','العصر','المغرب','العشاء'];
@@ -32,7 +32,7 @@ selectedPrayer=n;openSection='ورد بعد الصلاة';showPrayer();
 }
 function showPrayer(){
 const n=selectedPrayer,d=today(),checked=!!d.prayers[n];
-let sections=['ورد بعد الصلاة','ورد القرآن','أعمال الصلاة'];
+let sections=['ورد القرآن','ورد بعد الصلاة','السنن والركعات','جودة الصلاة','أعمال الصلاة'];
 let inner='<label class="wv-check"><input type="checkbox" data-wprayer="'+esc(n)+'" '+(checked?'checked':'')+'> أديت صلاة '+esc(n)+'</label>';
 inner+='<p class="notice">اضغطي على القسم لفتحه، وارجعي لنفس مكانك عند الإغلاق.</p>';
 for(const s of sections){
@@ -44,8 +44,8 @@ const id='pw:'+n+':'+a.id;inner+='<div class="wv-line"><span>'+esc(a.text)+'</sp
 }
 if(n==='الفجر'||n==='المغرب')inner+='<div class="wv-line"><b>سورة الطارق — '+n+'</b>'+countRow('tariq:'+n,d.prayerWird['tariq:'+n]||0,'من 7')+'</div>';
 }
-if(s==='ورد القرآن')inner+='<p>الورد المتسلسل: سجّلي الصفحات المقروءة، ويظهر مجموع اليوم في قسم القرآن.</p>'+countRow('quran',d.quran||0,'من '+w.goal+' صفحات اليوم');
-if(s==='أعمال الصلاة')inner+='<p class="muted">يمكنك إضافة أعمالك الخاصة من قسم خطتي.</p>'+w.custom.filter(x=>x.kind==='act').map(x=>'<label class="wv-check"><input type="checkbox" data-wact="'+esc(n+':'+x.id)+'" '+(d.acts[n+':'+x.id]?'checked':'')+'>'+esc(x.text)+'</label>').join('');
+if(s==='ورد القرآن')inner+='<div class="wv-page"><span>الصفحة التالية</span><strong>'+w.nextPage+'</strong></div><div class="row"><button class="btn" data-wread="1">✓ أتممت الصفحة</button><button class="btn secondary" data-wread="2">أتممت صفحتين</button></div><label>تصحيح الصفحة التالية<input class="field" id="w-next-page" type="number" min="1" max="604" value="'+w.nextPage+'"></label><p class="notice">الورد اليومي: '+d.quran+' / '+w.goal+' صفحات. جميع الصلوات تكمل من الصفحة نفسها.</p>'+(d.quran>=w.goal?'<p class="good">🌷 ما شاء الله، أنجزتِ وردك اليوم!</p>':'');
+if(s==='السنن والركعات')inner+='<p class="notice">الركعات بخطوات ركعتين</p>'+countRow('sunnah:'+n,(d.sunnah||{})[n]||0,'ركعة',2);if(s==='جودة الصلاة')inner+='<label>الخشوع (اختياري)<select class="field" data-wquality="'+esc(n)+'"><option value="">بدون تقييم</option>'+['هادئ','متوسط','بحاجة لتركيز'].map(x=>'<option '+((d.quality||{})[n]===x?'selected':'')+'>'+x+'</option>').join('')+'</select></label>';if(s==='أعمال الصلاة')inner+='<p class="muted">أعمال خاصة بهذه الصلاة</p>'+w.prayerActs.filter(x=>x.prayers.includes(n)).map(x=>'<label class="wv-check"><input type="checkbox" data-wact="'+esc(n+':'+x.id)+'" '+(d.acts[n+':'+x.id]?'checked':'')+'>'+esc(x.text)+'</label>').join('')+'<form id="w-prayer-act"><input class="field" name="text" required placeholder="عمل خاص بهذه الصلاة"><button class="btn">إضافة</button></form>';
 inner+='</details>';
 }
 showModal('☾ صلاة '+n,inner);
@@ -70,7 +70,7 @@ return card('<h2>الورد القرآني الثابت</h2><p class="muted">ص�
 }
 function prayerView(){
 let d=today();
-return card('<h2>صلواتي اليوم</h2><p class="notice">اضغطي على الصلاة لتسجيلها وفتح تفاصيلها.</p>'+prayers.map(n=>'<div class="wv-prayer"><button class="btn secondary" data-wpsheet="'+n+'">'+(d.prayers[n]?'✓ ':'☾ ')+n+'</button><span class="muted">'+(d.prayers[n]?'تم التسجيل':'لم تسجّل بعد')+'</span></div>').join(''))+card('<h2>النوافل</h2>'+['الضحى','قيام الليل'].map(n=>'<div class="wv-line"><b>'+n+'</b>'+countRow('nafl:'+n,d.nafl[n]||0,'ركعة — ركعتين ركعتين',2)+'</div>').join(''))+card('<h2>مواقيت الصلاة</h2><p class="notice">المواقيت والعد التنازلي يحتاجان إعداد الموقع ومصدر أوقات موثوقًا؛ لم نفعّلهما بعد حتى لا نعرض وقتًا غير دقيق.</p>');
+return card('<h2>صلواتي اليوم</h2><p class="notice">اضغطي على الصلاة لتسجيلها وفتح تفاصيلها.</p>'+prayers.map(n=>'<div class="wv-prayer"><button class="btn secondary" data-wpsheet="'+n+'">'+(d.prayers[n]?'✓ ':'☾ ')+n+'</button><span class="muted">'+(d.prayers[n]?'تم التسجيل':'لم تسجّل بعد')+'</span></div>').join('')+'<h3>صلوات إضافية</h3>'+w.extraPrayers.map(x=>'<div class="wv-prayer"><button class="btn secondary" data-wpsheet="'+esc(x)+'">'+esc(x)+'</button><button class="btn secondary small" data-wremoveprayer="'+esc(x)+'">حذف</button></div>').join('')+'<form id="w-add-prayer"><input class="field" name="text" required placeholder="مثلاً: الوتر"><button class="btn">إضافة صلاة</button></form>')+card('<h2>النوافل</h2>'+['الضحى','قيام الليل'].map(n=>'<div class="wv-line"><b>'+n+'</b>'+countRow('nafl:'+n,d.nafl[n]||0,'ركعة — ركعتين ركعتين',2)+'</div>').join(''))+card('<h2>مواقيت الصلاة</h2><p class="notice">المواقيت والعد التنازلي يحتاجان إعداد الموقع ومصدر أوقات موثوقًا؛ لم نفعّلهما بعد حتى لا نعرض وقتًا غير دقيق.</p>');
 }
 function plan(){
 return card('<h2>خطة عباداتي</h2><label class="wv-check"><input type="checkbox" id="w-light" '+(w.settings.light?'checked':'')+'> برنامج خفيف للأيام المزدحمة</label><p class="notice">البرنامج الخفيف يبسّط العرض فقط؛ لا يحذف الأعمال أو يغيّر سجل الإنجازات.</p>')+card('<h2>أعمالي الخاصة</h2>'+w.custom.filter(x=>x.kind==='act').map(x=>'<div class="wv-line">'+esc(x.text)+'</div>').join('')+'<form id="w-add-act"><input class="field" name="text" required placeholder="مثلاً: صدقة، قراءة حديث"><button class="btn">إضافة عمل</button></form>')+card('<h2>أدعيتي</h2>'+w.duas.map(x=>'<p class="wv-line">'+esc(x)+'</p>').join('')+'<form id="w-add-dua"><textarea class="field" name="text" required placeholder="دعاء خاص"></textarea><button class="btn">إضافة دعاء</button></form>');
@@ -87,10 +87,12 @@ return '<h2 class="section-title">عباداتي ☾</h2><p class="muted">مسا
 };
 const refresh=()=>{let top=window.scrollY;render();window.scrollTo(0,top)};
 document.addEventListener('click',e=>{
-const b=e.target.closest('[data-wview],[data-wcat],[data-wpsheet],[data-wopen],[data-wcount],[data-wtap],[data-wtapminus],[data-wcomplete],[data-wsurahdone]');
+const b=e.target.closest('[data-wview],[data-wcat],[data-wpsheet],[data-wopen],[data-wcount],[data-wtap],[data-wtapminus],[data-wcomplete],[data-wsurahdone],[data-wread],[data-wremoveprayer]');
 if(!b)return;
 e.preventDefault();e.stopImmediatePropagation();
 if(b.dataset.wview){wview=b.dataset.wview;refresh();return}
+if(b.dataset.wread){let q=Number(b.dataset.wread);if(w.nextPage+q>605){alert('وصلتِ لنهاية المصحف');return}today().quran=(today().quran||0)+q;w.nextPage=Math.min(604,w.nextPage+q);persist();showPrayer();return}
+if(b.dataset.wremoveprayer){if(confirm('حذف الصلاة الإضافية؟')){w.extraPrayers=w.extraPrayers.filter(x=>x!==b.dataset.wremoveprayer);persist();refresh()}return}
 if(b.dataset.wcat){category=b.dataset.wcat;refresh();return}
 if(b.dataset.wpsheet){prayerSheet(b.dataset.wpsheet);return}
 if(b.dataset.wopen){dhikrSheet(b.dataset.wopen);return}
@@ -100,6 +102,7 @@ if(!id)return;
 let d=today(),delta=b.dataset.wtap?1:b.dataset.wtapminus?-1:Number(b.dataset.step||0);
 if(id==='quran')d.quran=Math.max(0,(d.quran||0)+delta);
 else if(id==='surah')w.surahPage=Math.max(0,(w.surahPage||0)+delta);
+else if(id.startsWith('sunnah:')){let n=id.slice(7);d.sunnah=d.sunnah||{};d.sunnah[n]=Math.max(0,(d.sunnah[n]||0)+delta)}
 else if(id.startsWith('nafl:')){let n=id.slice(5);d.nafl[n]=Math.max(0,(d.nafl[n]||0)+delta)}
 else if(id.startsWith('pw:')||id.startsWith('tariq:'))d.prayerWird[id]=Math.max(0,(d.prayerWird[id]||0)+delta);
 else d.counts[id]=Math.max(0,(d.counts[id]||0)+delta);
@@ -112,6 +115,8 @@ refresh();
 document.addEventListener('change',e=>{
 let t=e.target;
 if(t.dataset.wprayer){today().prayers[t.dataset.wprayer]=t.checked;persist();return}
+if(t.dataset.wquality){today().quality=today().quality||{};today().quality[t.dataset.wquality]=t.value;persist();return}
+if(t.id==='w-next-page'){let n=Number(t.value);if(Number.isInteger(n)&&n>=1&&n<=604){w.nextPage=n;persist();if(!document.getElementById('modal').classList.contains('hidden'))showPrayer();else refresh()}else alert('الصفحة بين 1 و604');return}
 if(t.dataset.wact){today().acts[t.dataset.wact]=t.checked;persist();return}
 if(t.id==='w-light'){w.settings.light=t.checked;persist();return}
 if(t.id==='w-goal')w.goal=Math.max(1,Number(t.value)||5);
@@ -123,14 +128,16 @@ else return;
 persist();refresh();
 },true);
 document.addEventListener('submit',e=>{
-let f=e.target.closest('#w-add-dhikr,#w-add-act,#w-add-dua');if(!f)return;
+let f=e.target.closest('#w-add-dhikr,#w-add-act,#w-add-dua,#w-add-prayer,#w-prayer-act');if(!f)return;
 e.preventDefault();e.stopImmediatePropagation();
 let data=new FormData(f),v=String(data.get('text')||'').trim();if(!v)return;
+if(f.id==='w-add-prayer'){if(!prayers.includes(v)&&!w.extraPrayers.includes(v))w.extraPrayers.push(v);persist();refresh();return}
+if(f.id==='w-prayer-act'){w.prayerActs.push({id:'pa-'+Date.now(),text:v,prayers:[selectedPrayer]});persist();showPrayer();return}
 if(f.id==='w-add-dua')w.duas.push(v);
 else w.custom.push({id:'custom-'+Date.now(),text:v,cat:f.id==='w-add-dhikr'?'الخاصة':'الأعمال',kind:f.id==='w-add-act'?'act':'dhikr',target:Math.max(1,Number(data.get('target'))||1)});
 persist();refresh();
 },true);
 const style=document.createElement('style');style.textContent='.wv-prayer,.wv-line,.wv-dhikr{padding:12px 0;border-bottom:1px solid #e9dfd5}.wv-prayer{display:flex;justify-content:space-between;align-items:center}.wv-line{line-height:1.9}.wv-dhikr{padding:14px;background:#faf4ed;border-radius:14px;margin:9px 0}.wv-dhikr .row{align-items:flex-start;margin-bottom:8px}.wv-dhikr b{font-size:14px;line-height:1.8}.wv-done{opacity:.75}.wv-check{display:flex;align-items:center;gap:10px;padding:12px;background:#f5ece3;border-radius:13px;margin:10px 0}.wv-check input{width:21px;height:21px}.wv-count{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:10px 0}.wv-count button{width:45px;height:45px;border:0;border-radius:13px;background:#e9d9ca;color:#604839;font-size:25px}.wv-count strong{min-width:30px;text-align:center}.wv-reading{font-size:21px;line-height:2.2;text-align:center;padding:14px 6px}.wv-big{text-align:center;margin:18px 0}.wv-big button{height:150px;width:150px;border:0;border-radius:100%;background:#ead7c7;color:#674e40;display:inline-flex;flex-direction:column;justify-content:center;align-items:center;gap:8px}.wv-big span{font-size:45px;font-weight:bold}.wv-big small{font-size:13px}details{border:1px solid #e9ded2;border-radius:14px;padding:12px;margin:10px 0}summary{cursor:pointer;font-weight:bold;padding:5px}';
-document.head.appendChild(style);
+style.textContent+='.wv-page{display:flex;flex-direction:column;align-items:center;gap:6px;background:#f5ebe1;padding:18px;border-radius:16px;margin:12px 0}.wv-page strong{font-size:44px}';document.head.appendChild(style);
 render();
 })();
