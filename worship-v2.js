@@ -53,7 +53,7 @@ showModal('☾ صلاة '+n,inner);
 function dhikrSheet(id){
 selectedDhikr=id;const a=all().find(x=>x.id===id);if(!a)return;
 const c=count(a);
-showModal('الذكر','<div class="wv-reading"><p>'+esc(a.text)+'</p></div><p class="muted">العدد المستهدف: '+a.target+'</p><div class="wv-big"><button data-wtap="'+esc(id)+'" aria-label="زيادة العداد"><span id="wv-big-number">'+c+'</span><small>اضغطي هنا للعد</small></button></div><div class="row">'+button('− تراجع','data-wtapminus="'+esc(id)+'"')+button('✓ أتممت الذكر','data-wcomplete="'+esc(id)+'"')+'</div><p class="notice">يبقى الذكر مفتوحًا أثناء العد، ولا يتحرك مكان القراءة.</p>');
+showModal('الذكر','<div class="wv-reading"><p>'+esc(a.text)+'</p></div><p class="muted">العدد المستهدف: '+a.target+'</p><div class="wv-big"><button data-wtap="'+esc(id)+'" aria-label="زيادة العداد"><span id="wv-big-number">'+c+'</span><small>اضغطي هنا للعد</small></button></div><div class="row">'+button('− تراجع','data-wtapminus="'+esc(id)+'"')+button('✓ أتممت الذكر','data-wcomplete="'+esc(id)+'"')+'</div><form id="w-manual-count"><input type="hidden" name="id" value="'+esc(id)+'"><label>إضافة عدد من المسبحة<input class="field" type="number" name="amount" min="1" required placeholder="مثلاً 100"></label><button class="btn secondary">إضافة العدد</button></form><p class="notice">يبقى الذكر مفتوحًا أثناء العد، ولا يتحرك مكان القراءة.</p>');
 }
 function wlist(){
 let a=all().filter(x=>x.cat===category);
@@ -78,7 +78,7 @@ return card('<h2>خطة عباداتي</h2><label class="wv-check"><input type="
 function reports(){
 let days=Object.entries(w.days).sort((a,b)=>b[0].localeCompare(a[0]));
 const aggregate=(n)=>{let list=days.slice(0,n);return '<div class="stats"><div class="stat"><b>'+list.length+'</b>أيام مسجلة</div><div class="stat"><b>'+list.reduce((s,[,d])=>s+Object.values(d.prayers||{}).filter(Boolean).length,0)+'</b>صلوات مسجلة</div><div class="stat"><b>'+list.reduce((s,[,d])=>s+(d.quran||0),0)+'</b>صفحات قرآن</div></div>'};
-return card('<h2>آخر 7 أيام مسجلة</h2>'+aggregate(7))+card('<h2>آخر 30 يومًا مسجلًا</h2>'+aggregate(30)+'<p class="notice">التقرير يعتمد على الأيام التي سُجّلت فيها بيانات، وليس جميع أيام التقويم. السجل محلي على هذا الجهاز فقط.</p>')+card('<h2>سجل الأيام</h2>'+days.slice(0,30).map(([day,d])=>'<div class="wv-line">'+day+' — '+Object.values(d.prayers||{}).filter(Boolean).length+'/5 صلوات — '+(d.quran||0)+' صفحات</div>').join(''));
+const from=(period)=>{let now=new Date(),start=new Date(now.getFullYear(),now.getMonth(),now.getDate());if(period==='week')start.setDate(start.getDate()-(start.getDay()+1)%7);if(period==='month')start=new Date(now.getFullYear(),now.getMonth(),1);if(period==='year')start=new Date(now.getFullYear(),0,1);let totals={};for(let [key,day] of Object.entries(w.days)){if(key<start.toLocaleDateString('en-CA')||key>date())continue;for(let [id,n] of Object.entries(day.counts||{}))totals[id]=(totals[id]||0)+Number(n||0)}return totals};const periods=[['اليوم','day'],['الأسبوع','week'],['الشهر','month'],['السنة','year']];const sum=o=>Object.values(o).reduce((a,b)=>a+b,0);const y=from('year');const breakdown=all().filter(a=>a.cat==='الخاصة'&&a.kind!=='act').map(a=>'<div class="wv-line">'+esc(a.text)+' — '+(y[a.id]||0)+' مرة</div>').join('');return card('<h2>إحصائيات الأذكار التراكمية</h2><div class="wv-periods">'+periods.map(([label,p])=>'<div class="stat"><b>'+sum(from(p))+'</b>'+label+'</div>').join('')+'</div><p class="notice">المجاميع للأعداد المسجلة فعليًا، وليس الأهداف. ذكر النية محسوب مرة واحدة.</p>')+card('<h2>تفاصيل الأذكار الخاصة — هذه السنة</h2>'+(breakdown||'<p class="muted">لا توجد أذكار بعد</p>')+'<div class="wv-line">ذكر النية — '+(y.intention||0)+' مرة</div>')+card('<h2>آخر 7 أيام مسجلة</h2>'+aggregate(7))+card('<h2>آخر 30 يومًا مسجلًا</h2>'+aggregate(30)+'<p class="notice">التقرير يعتمد على الأيام التي سُجّلت فيها بيانات، وليس جميع أيام التقويم. السجل محلي على هذا الجهاز فقط.</p>')+card('<h2>سجل الأيام</h2>'+days.slice(0,30).map(([day,d])=>'<div class="wv-line">'+day+' — '+Object.values(d.prayers||{}).filter(Boolean).length+'/5 صلوات — '+(d.quran||0)+' صفحات</div>').join(''));
 }
 const original=worship;
 worship=function(){
@@ -87,11 +87,12 @@ return '<h2 class="section-title">عباداتي ☾</h2><p class="muted">مسا
 };
 const refresh=()=>{let top=window.scrollY;render();window.scrollTo(0,top)};
 document.addEventListener('click',e=>{
-const b=e.target.closest('[data-wview],[data-wcat],[data-wpsheet],[data-wopen],[data-wcount],[data-wtap],[data-wtapminus],[data-wcomplete],[data-wsurahdone],[data-wread],[data-wremoveprayer],[data-weditdhikr],[data-wdeletedhikr]');
+const b=e.target.closest('[data-wview],[data-wcat],[data-wpsheet],[data-wopen],[data-wcount],[data-wtap],[data-wtapminus],[data-wcomplete],[data-wsurahdone],[data-wread],[data-wremoveprayer],[data-weditdhikr],[data-wdeletedhikr],[data-wcancel]');
 if(!b)return;
 e.preventDefault();e.stopImmediatePropagation();
 if(b.dataset.wdeletedhikr){const id=b.dataset.wdeletedhikr;if(confirm('حذف هذا الذكر الخاص؟')){w.custom=w.custom.filter(x=>x.id!==id);persist();refresh()}return}
-if(b.dataset.weditdhikr){const a=w.custom.find(x=>x.id===b.dataset.weditdhikr);if(!a)return;const name=prompt('تعديل نص الذكر',a.text);if(name===null)return;if(!name.trim())return alert('نص الذكر مطلوب');const target=prompt('العدد المستهدف',String(a.target));if(target===null)return;const num=Number(target);if(!Number.isInteger(num)||num<1)return alert('أدخلي عددًا صحيحًا أكبر من صفر');a.text=name.trim();a.target=num;persist();refresh();return}
+if(b.dataset.weditdhikr){const a=w.custom.find(x=>x.id===b.dataset.weditdhikr);if(!a)return;showModal('تعديل الذكر','<form id="w-edit-dhikr"><input type="hidden" name="id" value="'+esc(a.id)+'"><label>نص الذكر<input class="field" name="text" required value="'+esc(a.text)+'"></label><label>العدد المستهدف<input class="field" name="target" type="number" min="1" required value="'+a.target+'"></label><div class="row"><button class="btn">حفظ</button><button class="btn secondary" type="button" data-wcancel="1">إلغاء</button></div></form>');return}
+if(b.dataset.wcancel){closeModal();return}
 if(b.dataset.wview){wview=b.dataset.wview;refresh();return}
 if(b.dataset.wread){let q=Number(b.dataset.wread);if(w.nextPage+q>605){alert('وصلتِ لنهاية المصحف');return}today().quran=(today().quran||0)+q;w.nextPage=Math.min(604,w.nextPage+q);persist();showPrayer();return}
 if(b.dataset.wremoveprayer){if(confirm('حذف الصلاة الإضافية؟')){w.extraPrayers=w.extraPrayers.filter(x=>x!==b.dataset.wremoveprayer);persist();refresh()}return}
@@ -130,9 +131,9 @@ else return;
 persist();refresh();
 },true);
 document.addEventListener('submit',e=>{
-let f=e.target.closest('#w-add-dhikr,#w-add-act,#w-add-dua,#w-add-prayer,#w-prayer-act');if(!f)return;
+let f=e.target.closest('#w-add-dhikr,#w-add-act,#w-add-dua,#w-add-prayer,#w-prayer-act,#w-edit-dhikr,#w-manual-count');if(!f)return;
 e.preventDefault();e.stopImmediatePropagation();
-let data=new FormData(f),v=String(data.get('text')||'').trim();if(!v)return;
+let data=new FormData(f);if(f.id==='w-manual-count'){let id=String(data.get('id')),n=Number(data.get('amount'));if(!Number.isSafeInteger(n)||n<1)return;today().counts[id]=(today().counts[id]||0)+n;persist();dhikrSheet(id);return}if(f.id==='w-edit-dhikr'){let a=w.custom.find(x=>x.id===data.get('id')),v=String(data.get('text')||'').trim(),n=Number(data.get('target'));if(!a||!v||!Number.isSafeInteger(n)||n<1)return;a.text=v;a.target=n;persist();closeModal();refresh();return}let v=String(data.get('text')||'').trim();if(!v)return;
 if(f.id==='w-add-prayer'){if(!prayers.includes(v)&&!w.extraPrayers.includes(v))w.extraPrayers.push(v);persist();refresh();return}
 if(f.id==='w-prayer-act'){w.prayerActs.push({id:'pa-'+Date.now(),text:v,prayers:[selectedPrayer]});persist();showPrayer();return}
 if(f.id==='w-add-dua')w.duas.push(v);
@@ -140,6 +141,6 @@ else w.custom.push({id:'custom-'+Date.now(),text:v,cat:f.id==='w-add-dhikr'?'ا�
 persist();refresh();
 },true);
 const style=document.createElement('style');style.textContent='.wv-prayer,.wv-line,.wv-dhikr{padding:12px 0;border-bottom:1px solid #e9dfd5}.wv-prayer{display:flex;justify-content:space-between;align-items:center}.wv-line{line-height:1.9}.wv-dhikr{padding:14px;background:#faf4ed;border-radius:14px;margin:9px 0}.wv-dhikr .row{align-items:flex-start;margin-bottom:8px}.wv-dhikr b{font-size:14px;line-height:1.8}.wv-done{opacity:.75}.wv-check{display:flex;align-items:center;gap:10px;padding:12px;background:#f5ece3;border-radius:13px;margin:10px 0}.wv-check input{width:21px;height:21px}.wv-count{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:10px 0}.wv-count button{width:45px;height:45px;border:0;border-radius:13px;background:#e9d9ca;color:#604839;font-size:25px}.wv-count strong{min-width:30px;text-align:center}.wv-reading{font-size:21px;line-height:2.2;text-align:center;padding:14px 6px}.wv-big{text-align:center;margin:18px 0}.wv-big button{height:150px;width:150px;border:0;border-radius:100%;background:#ead7c7;color:#674e40;display:inline-flex;flex-direction:column;justify-content:center;align-items:center;gap:8px}.wv-big span{font-size:45px;font-weight:bold}.wv-big small{font-size:13px}details{border:1px solid #e9ded2;border-radius:14px;padding:12px;margin:10px 0}summary{cursor:pointer;font-weight:bold;padding:5px}';
-style.textContent+='.wv-page{display:flex;flex-direction:column;align-items:center;gap:6px;background:#f5ebe1;padding:18px;border-radius:16px;margin:12px 0}.wv-page strong{font-size:44px}';document.head.appendChild(style);
+style.textContent+='.wv-periods{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.wv-page{display:flex;flex-direction:column;align-items:center;gap:6px;background:#f5ebe1;padding:18px;border-radius:16px;margin:12px 0}.wv-page strong{font-size:44px}';document.head.appendChild(style);
 render();
 })();
