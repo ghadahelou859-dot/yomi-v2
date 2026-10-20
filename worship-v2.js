@@ -4,7 +4,7 @@ const WKEY='yomi-v2-worship-2026-10';let w;
 try{w=JSON.parse(localStorage.getItem(WKEY)||'{}')}catch{w={}}
 w={days:{},custom:[],duas:[],surah:'مريم',surahPage:0,surahDone:{},surahTotal:0,goal:5,settings:{intention:'الصلاة على النبي ﷺ',intentionTarget:100,light:false},...w};
 w.nextPage=Number.isInteger(w.nextPage)&&w.nextPage>=1&&w.nextPage<=604?w.nextPage:24;w.extraPrayers=Array.isArray(w.extraPrayers)?w.extraPrayers:[];w.prayerActs=Array.isArray(w.prayerActs)?w.prayerActs:[];let selectedPrayer='',selectedDhikr='',category='الخاصة',wview='صلواتي',openSection='ورد بعد الصلاة';let backupPrepared=false;
-const date=()=>new Date().toLocaleDateString('en-CA'),today=()=>w.days[date()]||(w.days[date()]={prayers:{},nafl:{},counts:{},done:{},quran:0,prayerWird:{},acts:{}}),persist=()=>{try{localStorage.setItem(WKEY,JSON.stringify(w))}catch(e){alert('تعذر حفظ عباداتي، تحققي من مساحة التخزين.')}};
+const date=()=>new Date().toLocaleDateString('en-CA'),today=()=>w.days[date()]||(w.days[date()]={prayers:{},nafl:{},counts:{},done:{},quran:0,prayerWird:{},acts:{}}),persist=()=>{try{localStorage.setItem(WKEY,JSON.stringify(w));window.dispatchEvent(new Event('yomi-v2-local-change'))}catch(e){alert('تعذر حفظ عباداتي، تحققي من مساحة التخزين.')}};
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const prayers=['الفجر','الظهر','العصر','المغرب','العشاء'];
 const adhkar=[
