@@ -5,6 +5,7 @@ const ui=document.getElementById('yomiCloud'),status=document.getElementById('yo
 let user=null,base=null,busy=false,dirty=false,interval=null;
 const snapshot=()=>({main:JSON.parse(localStorage.getItem(MAIN)||'{}'),worship:JSON.parse(localStorage.getItem(WORSHIP)||'{}')});
 const json=x=>JSON.stringify(x);
+const isEmpty=data=>{const m=data?.main||{},w=data?.worship||{};return Object.entries(m).every(([k,v])=>['tasks','events','projects','transactions','notes','goals','learning','moods','dua','taskTrash'].includes(k)?!Array.isArray(v)||v.length===0:typeof v==='object'&&v!==null?Object.keys(v).length===0:true)&&Object.entries(w).every(([k,v])=>!v||(typeof v==='object'&&Object.keys(v).length===0))};
 const report=t=>{if(status)status.textContent=t};
 function apply(data){if(!data||typeof data!=='object')return;localStorage.setItem(MAIN,json(data.main||{}));localStorage.setItem(WORSHIP,json(data.worship||{}));location.reload()}
 function showAccount(){const box=document.getElementById('yomiCloudAuth');if(!box)return;box.hidden=!!user;document.getElementById('yomiCloudLogout').hidden=!user;document.getElementById('yomiCloudEmail').textContent=user?.email||''}
@@ -13,7 +14,11 @@ async function upload(payload){const {error}=await client.from(TABLE).upsert({us
 async function sync(){if(!user||busy||!navigator.onLine)return;busy=true;try{const row=await remote(),local=snapshot(),ls=json(local),rs=row?json(row.payload):null;
  if(!row){await upload(local);return}
  if(base===null){const saved=localStorage.getItem('yomi-v2-sync-base-'+user.id);base=saved||null}
- if(base===null){if(ls===rs){base=rs;report('✓ البيانات متطابقة')}else{report('بيانات مختلفة: اختاري النسخة المعتمدة');const useCloud=confirm('يوجد اختلاف بين بيانات هذا الجهاز والحساب السحابي.\nموافق: استخدام بيانات الحساب على هذا الجهاز.\nإلغاء: الاحتفاظ ببيانات هذا الجهاز ورفعها للحساب.\nاحفظي نسخة من بياناتك قبل الاختيار.');if(useCloud){base=rs;localStorage.setItem('yomi-v2-sync-base-'+user.id,base);apply(row.payload);return}else{const allow=confirm('هل أنتِ متأكدة من استبدال نسخة الحساب السحابي ببيانات هذا الجهاز؟ لا يمكن التراجع بدون نسخة احتياطية.');if(!allow){report('المزامنة متوقفة حتى تختاري النسخة');return}await upload(local)}}}
+ if(base===null){if(ls===rs){base=rs;report('✓ البيانات متطابقة')}
+ else if(isEmpty(local)&&!isEmpty(row.payload)){base=rs;localStorage.setItem('yomi-v2-sync-base-'+user.id,base);apply(row.payload);return}
+ else if(isEmpty(row.payload)&&!isEmpty(local)){await upload(local)}
+ else{report('⚠ بيانات مختلفة محفوظة على الجهاز والحساب. لم يتم استبدال أي نسخة. يلزم دمج آمن.');return}}
+
  else if(rs===base&&ls!==base){await upload(local)}
  else if(ls===base&&rs!==base){base=rs;localStorage.setItem('yomi-v2-sync-base-'+user.id,base);apply(row.payload);return}
  else if(ls!==rs&&ls!==base&&rs!==base){report('تعارض بين الجهاز والحساب — لم نكتب فوق أي بيانات');return}
